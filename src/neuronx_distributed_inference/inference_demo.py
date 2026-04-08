@@ -25,6 +25,7 @@ from neuronx_distributed_inference.models.config import (
     to_torch_dtype,
 )
 from neuronx_distributed_inference.models.dbrx.modeling_dbrx import NeuronDbrxForCausalLM
+from neuronx_distributed_inference.models.gemma4.modeling_gemma4 import NeuronGemma4ForCausalLM
 from neuronx_distributed_inference.models.llama.modeling_llama import NeuronLlamaForCausalLM
 from neuronx_distributed_inference.models.mixtral.modeling_mixtral import NeuronMixtralForCausalLM
 from neuronx_distributed_inference.models.qwen2.modeling_qwen2 import NeuronQwen2ForCausalLM
@@ -53,6 +54,7 @@ MODEL_TYPES = {
     "llama": {"causal-lm": NeuronLlamaForCausalLM},
     "mixtral": {"causal-lm": NeuronMixtralForCausalLM},
     "dbrx": {"causal-lm": NeuronDbrxForCausalLM},
+    "gemma4": {"causal-lm": NeuronGemma4ForCausalLM},
     "qwen2": {"causal-lm": NeuronQwen2ForCausalLM},
     "qwen3": {"causal-lm": NeuronQwen3ForCausalLM},
     "qwen3_moe": {"causal-lm": NeuronQwen3MoeForCausalLM},
