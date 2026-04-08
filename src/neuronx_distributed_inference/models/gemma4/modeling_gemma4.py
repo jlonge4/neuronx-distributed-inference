@@ -31,10 +31,13 @@ TODO: attention_k_eq_v=True means K and V share weights — verify state dict be
 """
 
 import copy
+from types import SimpleNamespace
 from typing import List, Optional, Tuple, Type
 
 import torch
 from torch import nn
+from transformers import AutoConfig
+from transformers.configuration_utils import PretrainedConfig
 
 from neuronx_distributed.parallel_layers.layers import ColumnParallelLinear, ParallelEmbedding
 
@@ -43,6 +46,37 @@ from neuronx_distributed_inference.models.llama.modeling_llama import NeuronLlam
 from neuronx_distributed_inference.models.model_base import NeuronBaseForCausalLM, NeuronBaseModel
 from neuronx_distributed_inference.modules.attention.attention_base import NeuronAttentionBase
 from neuronx_distributed_inference.modules.attention.utils import RotaryEmbedding, apply_rotary_pos_emb
+
+
+# ── Gemma4Config — defined here so old transformers doesn't need to know about it ──
+
+class Gemma4Config(PretrainedConfig):
+    """
+    Minimal Gemma 4 config registered with AutoConfig so that
+    AutoConfig.from_pretrained() works even on transformers versions that
+    pre-date Gemma 4.  The real Gemma4Config (transformers >= 4.52) takes
+    precedence if already registered — the try/except below is a no-op in
+    that case.
+
+    The checkpoint nests all text fields under a `text_config` sub-dict.
+    We expose it as a SimpleNamespace so callers can do text_config.head_dim
+    etc.; nested dicts (e.g. rope_parameters) are intentionally left as dicts
+    so dict.get() still works.
+    """
+    model_type = "gemma4"
+
+    def __init__(self, text_config=None, **kwargs):
+        super().__init__(**kwargs)
+        if isinstance(text_config, dict):
+            self.text_config = SimpleNamespace(**text_config)
+        else:
+            self.text_config = text_config  # None or already a config object
+
+
+try:
+    AutoConfig.register("gemma4", Gemma4Config)
+except ValueError:
+    pass  # Already registered (transformers >= 4.52 has its own Gemma4Config)
 
 
 # ── RMSNorm ───────────────────────────────────────────────────────────────────
