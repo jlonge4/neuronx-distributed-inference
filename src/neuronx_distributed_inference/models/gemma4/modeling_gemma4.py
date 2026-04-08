@@ -37,7 +37,6 @@ import torch
 from torch import nn
 
 from neuronx_distributed.parallel_layers.layers import ColumnParallelLinear, ParallelEmbedding
-from neuronx_distributed.utils import cpu_mode
 
 from neuronx_distributed_inference.models.config import InferenceConfig, NeuronConfig
 from neuronx_distributed_inference.models.llama.modeling_llama import NeuronLlamaMLP
@@ -67,14 +66,6 @@ class NeuronGemma4RMSNorm(nn.Module):
 
 
 def _get_rmsnorm_cls():
-    """Return HF's implementation on CPU (NeuronRMSNorm doesn't run on CPU)."""
-    if cpu_mode():
-        try:
-            from transformers.models.gemma4.modeling_gemma4 import Gemma4RMSNorm
-            return Gemma4RMSNorm
-        except ImportError:
-            # transformers may not have Gemma 4 yet; fall through to our impl
-            pass
     return NeuronGemma4RMSNorm
 
 
@@ -463,14 +454,19 @@ class NeuronGemma4ForCausalLM(NeuronBaseForCausalLM):
 
     @staticmethod
     def load_hf_model(model_path, **kwargs):
+        # Gemma4ForConditionalGeneration requires transformers >= 4.52.
+        # This method is only called for logit-matching accuracy checks; weight loading
+        # from a local directory goes through load_state_dict() and does not reach here.
         try:
             from transformers import Gemma4ForConditionalGeneration
-            return Gemma4ForConditionalGeneration.from_pretrained(model_path, **kwargs)
         except ImportError:
             raise ImportError(
-                "Gemma 4 requires transformers >= 4.52. "
-                "Please upgrade: pip install --upgrade transformers"
+                "Logit-matching for Gemma 4 requires transformers >= 4.52 "
+                "(your environment has an older version that predates Gemma 4). "
+                "Either upgrade transformers in this venv or use "
+                "--check-accuracy-mode skip-accuracy-check."
             )
+        return Gemma4ForConditionalGeneration.from_pretrained(model_path, **kwargs)
 
     @staticmethod
     def convert_hf_to_neuron_state_dict(state_dict: dict, config: InferenceConfig) -> dict:
